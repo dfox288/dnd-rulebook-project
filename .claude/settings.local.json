@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh issue view:*)",
+      "SlashCommand(/organize-docs)",
+      "Bash(if [ -d \"docs/backend\" ])",
+      "Bash([ -d \"docs/frontend\" ])",
+      "Bash(then echo \"Wrapper project detected\")",
+      "Bash(else echo \"Sub-project detected\")",
+      "Bash(fi)",
+      "Bash(ls:*)",
+      "Bash(git mv:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
