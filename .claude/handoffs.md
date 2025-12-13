@@ -111,6 +111,55 @@ curl "http://localhost:8080/api/v1/parties/1/stats" -H "Authorization: Bearer $T
 
 ---
 
+## For: frontend
+**From:** backend | **Issue:** #566 | **Created:** 2025-12-13 17:55
+
+Equipment location slots are now supported. Your inventory tab UI can integrate equip/unequip functionality.
+
+**What I did (Issue #565):**
+- Added `EquipmentLocation` enum: `main_hand`, `off_hand`, `worn`, `attuned`, `backpack`
+- `PATCH /equipment/{id}` now accepts `location` parameter
+- Auto-sets `equipped` and `is_attuned` based on location
+- Slot enforcement with auto-unequip of previous items
+- 18 new tests, all passing
+
+**What you need to do:**
+- Wire `useInventoryActions.equipItem(id, location)` to the endpoint
+- Update ItemRow action menus to call equip/unequip
+- EquipmentStatus sidebar should display items by slot
+- Handle 422 errors (attunement limit, invalid location, etc.)
+
+**API Contract:**
+```bash
+# Equip to main hand
+PATCH /api/v1/characters/{id}/equipment/{equipmentId}
+{"location": "main_hand"}
+
+# Response
+{
+  "data": {
+    "id": 176,
+    "location": "main_hand",
+    "equipped": true,
+    "is_attuned": false
+  }
+}
+```
+
+**Valid locations:** `main_hand` (1), `off_hand` (1), `worn` (1), `attuned` (max 3), `backpack` (unlimited)
+
+**Test with:**
+```bash
+curl -X PATCH "http://localhost:8080/api/v1/characters/1/equipment/1" \
+  -H "Content-Type: application/json" \
+  -d '{"location": "main_hand"}'
+```
+
+**Related:**
+- Backend PR: dfox288/ledger-of-heroes-backend#146
+- Frontend branch ready: `feature/issue-555-inventory-tab`
+
+---
 
 <!-- HANDOFF TEMPLATE (copy this when creating a new handoff):
 
