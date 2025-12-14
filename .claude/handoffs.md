@@ -111,42 +111,6 @@ curl "http://localhost:8080/api/v1/parties/1/stats" -H "Authorization: Bearer $T
 
 ---
 
-## For: frontend
-**From:** backend | **Issue:** #588 | **Created:** 2025-12-13
-
-Attunement behavior changed to match D&D 5e rules. Items now stay attuned when unequipped or displaced.
-
-**What I did (Issue #583):**
-- Attunement persists when items moved to backpack
-- Attunement persists when items displaced by another item
-- Attunement persists when using `equipped=false`
-- Breaking attunement requires explicit `is_attuned=false`
-
-**What you need to do:**
-1. **Show attunement on backpack items** - attuned items can now be in backpack
-2. **Add "Break Attunement" action** - users need explicit way to unattune
-3. **Update slot counter** - count ALL attuned items (equipped + backpack)
-4. **Allow attune from backpack** - no need to equip first
-
-**Key behavior change:**
-| Scenario | Old | New |
-|----------|-----|-----|
-| Move attuned item to backpack | Auto-clears | Persists |
-| Displace attuned item | Auto-clears | Persists |
-| Unequip attuned item | Auto-clears | Persists |
-
-**API for breaking attunement:**
-```bash
-curl -X PATCH "http://localhost:8080/api/v1/characters/1/equipment/123" \
-  -H "Content-Type: application/json" \
-  -d '{"is_attuned": false}'
-```
-
-**Related:**
-- Backend PR: dfox288/ledger-of-heroes-backend#157
-- Backend Issue: #583
-
----
 
 ## For: frontend
 **From:** backend | **Issue:** #589 | **Created:** 2025-12-14
@@ -219,45 +183,6 @@ main_hand, off_hand, head, neck, cloak, armor, clothes, belt, hands, feet, ring_
 
 ---
 
-## For: frontend
-**From:** backend | **Issue:** #591 | **Created:** 2025-12-14
-
-Backend now correctly computes `is_dead` when `death_save_failures` reaches 3. Frontend can remove defensive logic.
-
-**What I did (Issue #590):**
-- Added model boot event to auto-compute `is_dead = true` when `death_save_failures >= 3`
-- Death state now computed correctly regardless of update path (API PATCH, direct model, or death save controller)
-- Documented that reducing death saves does NOT auto-revive (D&D 5e RAW - requires resurrection magic)
-
-**What you need to do:**
-1. **Remove defensive logic** that locally computes death state from `death_save_failures`
-2. **Trust `is_dead` from API** as the single source of truth
-3. **Simplify UI logic** to just check `character.is_dead`
-
-**API behavior:**
-| Action | Result |
-|--------|--------|
-| Set `death_save_failures = 3` via PATCH | `is_dead` auto-set to `true` |
-| Reduce `death_save_failures` below 3 | `is_dead` stays `true` (requires resurrection) |
-| Use `/api/v1/characters/{id}/revive` | `is_dead` set to `false`, death saves reset |
-
-**Response shape (unchanged):**
-```json
-{
-  "data": {
-    "is_dead": true,
-    "death_save_failures": 3,
-    "current_hit_points": 0
-  }
-}
-```
-
-**Related:**
-- Backend PR: dfox288/ledger-of-heroes-backend#161
-- Original bug: #590
-- Frontend issue: #591
-
----
 
 <!-- HANDOFF TEMPLATE (copy this when creating a new handoff):
 
