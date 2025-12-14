@@ -184,6 +184,53 @@ main_hand, off_hand, head, neck, cloak, armor, clothes, belt, hands, feet, ring_
 ---
 
 
+## For: backend
+**From:** frontend | **Issue:** #597 | **Created:** 2025-12-14
+
+Parties API endpoint returns 500 error when accessed without authentication. Blocking Party Management UI PR #85.
+
+**Context:**
+- Frontend PR #85 implements Party Management UI per handoff from backend
+- When navigating to `/parties` page, the Nitro proxy calls backend `/api/v1/parties`
+- Backend returns 500 Internal Server Error
+
+**Observed behavior:**
+```bash
+curl http://localhost:8080/api/v1/parties
+# Returns 500 with Laravel error page
+```
+
+Laravel log shows:
+```
+Route [login] not defined.
+Symfony\Component\Routing\Exception\RouteNotFoundException
+```
+
+**Expected behavior:**
+Either:
+1. Parties endpoint is public (like `/characters` and `/spells` which work without auth)
+2. Or returns 401 JSON response for unauthenticated requests
+
+**Root cause:**
+Sanctum auth middleware on parties routes tries to redirect to login page, but API-only backend has no login route defined.
+
+**Workaround options:**
+1. Frontend can't proceed until this is fixed
+2. Backend could make parties endpoint public for now
+3. Backend could configure unauthenticated API requests to return 401 JSON
+
+**Frontend is blocked on:**
+- PR #85: Party Management UI (8 of 11 tasks complete, 44 tests passing)
+- All party-related pages will error until backend fix is deployed
+
+**Related:**
+- Backend issue: #597
+- Frontend PR: #85
+- Original handoff: Backend -> Frontend party system (#564)
+
+---
+
+
 <!-- HANDOFF TEMPLATE (copy this when creating a new handoff):
 
 ## For: frontend|backend
