@@ -15,44 +15,59 @@ LOCATION: wrapper/.claude/handoffs.md
 
 <!-- Agents: Add new handoffs below this line. Delete handoffs after processing. -->
 
-## For: backend
-**From:** frontend | **Issue:** #612 | **Created:** 2025-12-14 15:30
+## For: frontend
+**From:** backend | **Issue:** #616 | **Created:** 2025-12-14 20:00
 
-Spell slot tracking and preparation toggle endpoints needed for Character Sheet Spells Tab Phase 2.
+Spell slot tracking and preparation toggle endpoints are now available (PR #170).
 
 **What I did:**
-- Designed Spells Tab UI (see `wrapper/docs/frontend/plans/2025-12-14-spells-tab-design.md`)
-- Created issue #612 with detailed implementation plan
-- Added implementation comment with migration order and test checklist
+- Implemented `PATCH /characters/{id}/spells/{characterSpellId}` - preparation toggle
+- Implemented `PATCH /characters/{id}/spell-slots/{level}` - slot usage management
+- Long rest already resets spell slots (no changes needed)
+- 29 new tests covering all edge cases
 
-**What you need to do:**
-1. Add `character_spell_slots` table (or JSON column) for tracking spent slots
-2. Implement `PATCH /characters/{id}/spell-slots/{level}` - action-based slot usage
-3. Implement `PATCH /characters/{id}/spells/{spellId}` - preparation toggle
-4. Update `POST /characters/{id}/long-rest` to reset spell slots
+**New endpoints:**
 
-**Technical details:**
-- Full plan: `wrapper/docs/frontend/plans/2025-12-14-backend-spell-slots-plan.md`
-- Action-based API recommended: `{ "action": "use" | "restore" | "reset" }`
-- Existing `GET /spell-slots` works great, just need mutation endpoints
-
-**Test with:**
+### Toggle Spell Preparation
 ```bash
-# Current (works)
-curl "http://localhost:8080/api/v1/characters/flame-phoenix-t5kg/spell-slots"
-
-# Needed
-curl -X PATCH "http://localhost:8080/api/v1/characters/{id}/spell-slots/1" \
+# Prepare a spell (use characterSpell.id, not spell.id)
+curl -X PATCH "http://localhost:8080/api/v1/characters/{id}/spells/42" \
   -H "Content-Type: application/json" \
-  -d '{"action": "use"}'
+  -d '{"is_prepared": true}'
+
+# Response includes full CharacterSpell resource
 ```
 
+### Update Spell Slot Usage
+```bash
+# Action-based (recommended for UI clicks)
+curl -X PATCH "http://localhost:8080/api/v1/characters/{id}/spell-slots/1" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "use"}'      # or "restore" or "reset"
+
+# Absolute value (for drag/drop interfaces)
+curl -X PATCH "http://localhost:8080/api/v1/characters/{id}/spell-slots/1" \
+  -H "Content-Type: application/json" \
+  -d '{"spent": 2}'
+
+# For Warlocks
+curl -X PATCH "http://localhost:8080/api/v1/characters/{id}/spell-slots/3" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "use", "slot_type": "pact_magic"}'
+
+# Response: { "data": { "level": 1, "total": 4, "spent": 2, "available": 2, "slot_type": "standard" } }
+```
+
+**Error codes:**
+- 422: Validation errors (limit reached, always-prepared, no slots available, spent > total)
+- 404: Non-existent character spell or spell level
+
 **Related:**
-- Blocks Phase 2 of: #556 (Spells Tab)
-- See also: #612 for full details
+- Backend PR: dfox288/ledger-of-heroes-backend#170
+- Frontend issue: #616
+- Original request: #612
 
 ---
-
 
 
 
