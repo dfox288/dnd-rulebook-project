@@ -16,100 +16,72 @@ LOCATION: wrapper/.claude/handoffs.md
 <!-- Agents: Add new handoffs below this line. Delete handoffs after processing. -->
 
 ## For: frontend
-**From:** backend | **Issue:** #681 | **Created:** 2025-12-15 16:35
+**From:** backend | **Issue:** #647 | **Created:** 2025-12-15 18:30
 
-Encounter presets API is ready! DMs can now save and load monster groups.
+Class counters API is ready! Characters now expose Rage, Ki Points, Sorcery Points, etc.
+
+**IMPORTANT NAMING CHANGE:** We're using `counters` instead of `class_resources` - aligns with existing `class_counters` table.
 
 **What I did:**
-- Added CRUD endpoints for encounter presets at `/parties/{party}/encounter-presets`
-- Load endpoint creates EncounterMonster records with proper auto-labeling
-- Response includes `monster_name` and `challenge_rating` for easy display
-- 20 tests covering all operations
+- Added `counters` array to character response
+- Created dedicated counter endpoints for listing and updating
+- Counters auto-initialize from class features when characters are created
+- Integrated with existing short/long rest mechanics
 
 **What you need to do:**
-- Add "Save as Preset" UI when encounter has monsters
-- Add "Load Preset" selector in DM Screen encounter panel
-- Implement preset management (rename, delete)
+- Update character sheet to display `counters` array (not `class_resources`)
+- Add use/restore controls for each counter
+- Implement DM Screen resource tracker using same data
 
 **API contract:**
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/parties/{party}/encounter-presets` | List presets |
-| POST | `/parties/{party}/encounter-presets` | Create preset |
-| PATCH | `/parties/{party}/encounter-presets/{id}` | Rename |
-| DELETE | `/parties/{party}/encounter-presets/{id}` | Delete |
-| POST | `/parties/{party}/encounter-presets/{id}/load` | Load into encounter |
+| GET | `/characters/{id}` | Includes `counters` array in response |
+| GET | `/characters/{id}/counters` | List all counters |
+| PATCH | `/characters/{id}/counters/{slug}` | Update counter |
 
-**Response shape:**
+**Response shape (in character response):**
 ```json
 {
-  "data": [{
-    "id": 1,
-    "name": "Goblin Patrol",
-    "monsters": [
-      { "monster_id": 5, "quantity": 4, "monster_name": "Goblin", "challenge_rating": "1/4" }
-    ],
-    "created_at": "...",
-    "updated_at": "..."
-  }]
-}
-```
-
-**Test with:**
-```bash
-# Create preset
-curl -X POST "http://localhost:8080/api/v1/parties/1/encounter-presets" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test", "monsters": [{"monster_id": 1, "quantity": 2}]}'
-
-# Load preset
-curl -X POST "http://localhost:8080/api/v1/parties/1/encounter-presets/1/load"
-```
-
-**Related:**
-- Closes: #667 (original request)
-- Backend PR: dfox288/ledger-of-heroes-backend#182
-- See also: `useEncounterMonsters.ts`
-
----
-
-## For: backend
-**From:** frontend | **Issue:** #647 | **Created:** 2025-12-15 08:50
-
-Class resource counters needed for character sheet (Rage, Ki Points, Sorcery Points, etc.).
-
-**What frontend needs:**
-- Character response to include `class_resources` array
-- Each resource: id, name, slug, current, max, reset_on
-- PATCH endpoint to update current value
-- Resources auto-reset on short/long rest
-
-**Priority resources:**
-| Class | Resource | Max | Resets |
-|-------|----------|-----|--------|
-| Barbarian | Rage | 2-6 by level | Long rest |
-| Monk | Ki Points | = monk level | Short rest |
-| Fighter | Action Surge | 1-2 | Short rest |
-| Sorcerer | Sorcery Points | = sorc level | Long rest |
-
-**Expected response shape:**
-```json
-{
-  "class_resources": [
-    { "id": 1, "slug": "rage", "name": "Rage", "current": 2, "max": 3, "reset_on": "long_rest" }
+  "counters": [
+    {
+      "id": 123,
+      "slug": "phb:barbarian:rage",
+      "name": "Rage",
+      "current": 2,
+      "max": 3,
+      "reset_on": "long_rest",
+      "source": "Barbarian",
+      "source_type": "class",
+      "unlimited": false
+    }
   ]
 }
 ```
 
+**Update counter:**
+```bash
+# Use action (increment/decrement)
+curl -X PATCH "http://localhost:8080/api/v1/characters/1/counters/phb:barbarian:rage" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "use"}'   # or "restore" or "reset"
+
+# Set absolute spent value
+curl -X PATCH "http://localhost:8080/api/v1/characters/1/counters/phb:barbarian:rage" \
+  -H "Content-Type: application/json" \
+  -d '{"spent": 2}'   # sets current = max - spent
+```
+
 **Test with:**
 ```bash
-# After implementation
-curl "http://localhost:8080/api/v1/characters/1" | jq '.data.class_resources'
+curl "http://localhost:8080/api/v1/characters/1" | jq '.data.counters'
 ```
 
 **Related:**
-- Blocks: #632 (Frontend class resource counters)
-- Also needed for: #606 (DM Screen resource tracker)
+- Closes: #647 (Backend class resources API)
+- Unblocks: #632 (Frontend class resource counters)
+- Also enables: #606 (DM Screen resource tracker)
+- Note: `/feature-uses` endpoint deprecated, use `/counters`
 
 ---
 
