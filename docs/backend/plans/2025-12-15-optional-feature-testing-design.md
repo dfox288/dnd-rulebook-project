@@ -2,7 +2,7 @@
 
 **Date:** 2025-12-15
 **Status:** Approved
-**Related Issues:** TBD (will create after audit)
+**Related Issues:** #677
 
 ## Overview
 
