@@ -82,7 +82,7 @@ Response structure:
 
 **Endpoint:** `POST /api/v1/characters`
 
-**Request:**
+**Minimal Request (shell only):**
 ```json
 {
   "public_id": "brave-warrior-X4kP",
@@ -90,9 +90,20 @@ Response structure:
 }
 ```
 
+**Alternative: Include race/class in initial POST:**
+```json
+{
+  "public_id": "brave-warrior-X4kP",
+  "name": "Legolas",
+  "race_slug": "phb:elf",
+  "class_slug": "phb:ranger"
+}
+```
+
 **Notes:**
 - `public_id` should be generated client-side (adjective-noun-4chars pattern)
 - `name` can be a placeholder - it's updated in the final step
+- You can include `race_slug`, `class_slug`, and/or `background_slug` in the initial POST instead of using separate PATCH requests
 
 **Response:**
 ```json
@@ -107,7 +118,7 @@ Response structure:
 }
 ```
 
-**After this step:** Character exists but has no race, class, or background.
+**After this step:** Character exists. If race/class were included, those are already set.
 
 ---
 
@@ -382,39 +393,99 @@ Keep checking `GET /pending-choices` and resolving until `summary.required_pendi
 
 ---
 
-## Step 8: Validate Completion
+## Step 8: Check Completion Status
 
-**Endpoint:** `GET /api/v1/characters/{id}/validate`
+### Option A: Character Resource (recommended)
 
-**Response (success):**
+**Endpoint:** `GET /api/v1/characters/{id}`
+
+The character response includes completion status:
 ```json
 {
   "data": {
-    "is_valid": true,
+    "id": 123,
+    "name": "Elara Moonwhisper",
     "is_complete": true,
-    "errors": [],
-    "warnings": []
+    "validation_status": {
+      "is_complete": true,
+      "missing": []
+    },
+    ...
   }
 }
 ```
 
-**Response (incomplete):**
+When incomplete:
 ```json
 {
   "data": {
-    "is_valid": false,
     "is_complete": false,
-    "errors": [
-      "Character has 2 unresolved required choices"
-    ],
-    "warnings": []
+    "validation_status": {
+      "is_complete": false,
+      "missing": ["race", "class", "background"]
+    },
+    ...
+  }
+}
+```
+
+### Option B: Summary Endpoint
+
+**Endpoint:** `GET /api/v1/characters/{id}/summary`
+
+```json
+{
+  "data": {
+    "character": { "id": 123, "name": "Elara", "total_level": 1 },
+    "pending_choices": { "proficiencies": 0, "languages": 0, ... },
+    "creation_complete": true,
+    "missing_required": []
+  }
+}
+```
+
+### Validate Endpoint (Data Integrity Only)
+
+**Endpoint:** `GET /api/v1/characters/{id}/validate`
+
+> **Note:** This endpoint checks for **dangling references** (data integrity), not character creation completion. Use this to verify all slug-based references resolve after reimports.
+
+**Response:**
+```json
+{
+  "data": {
+    "valid": true,
+    "dangling_references": {},
+    "summary": {
+      "total_references": 22,
+      "valid_references": 22,
+      "dangling_count": 0
+    }
+  }
+}
+```
+
+**When dangling references exist:**
+```json
+{
+  "data": {
+    "valid": false,
+    "dangling_references": {
+      "race": "phb:high-elf",
+      "spells": ["phb:wish", "phb:meteor-swarm"]
+    },
+    "summary": {
+      "total_references": 15,
+      "valid_references": 12,
+      "dangling_count": 3
+    }
   }
 }
 ```
 
 **Notes:**
-- `is_complete` becomes `true` when all required choices are resolved
-- A valid character can be used in play
+- Use `is_complete` from the character resource or `creation_complete` from summary for wizard completion
+- The `/validate` endpoint is for data integrity checks, not wizard flow
 
 ---
 
@@ -443,6 +514,7 @@ When the user goes back and changes race/class/background, the backend handles c
 
 ## Complete Flow Example
 
+### Option A: Step-by-step (separate requests)
 ```
 1. POST /api/v1/characters
    { "public_id": "brave-warrior-X4kP", "name": "Temp" }
@@ -461,24 +533,34 @@ When the user goes back and changes race/class/background, the backend handles c
      "intelligence": 15, "wisdom": 12, "charisma": 10 }
 
 6. GET /api/v1/characters/123/pending-choices
-   → Loop through and resolve each required choice:
-
-   POST /api/v1/characters/123/choices/equipment_mode:class:phb:wizard
-   { "selected": ["equipment"] }
-
-   POST /api/v1/characters/123/choices/proficiency:class:phb:wizard:2
-   { "selected": ["arcana", "history"] }
-
-   POST /api/v1/characters/123/choices/equipment:class:phb:wizard:1
-   { "selected": ["a"] }
-
-   ... continue until required_pending === 0
+   → Loop through and resolve each required choice
 
 7. PATCH /api/v1/characters/123
    { "name": "Elara Moonwhisper", "alignment": "Neutral Good" }
 
-8. GET /api/v1/characters/123/validate
-   → { "is_valid": true, "is_complete": true }
+8. GET /api/v1/characters/123
+   → Check: is_complete === true
+```
+
+### Option B: Combined initial POST (fewer requests)
+```
+1. POST /api/v1/characters
+   { "public_id": "brave-warrior-X4kP", "name": "Temp",
+     "race_slug": "phb:high-elf", "class_slug": "phb:wizard",
+     "background_slug": "phb:sage" }
+
+2. PATCH /api/v1/characters/123
+   { "strength": 8, "dexterity": 14, "constitution": 14,
+     "intelligence": 15, "wisdom": 12, "charisma": 10 }
+
+3. GET /api/v1/characters/123/pending-choices
+   → Loop through and resolve each required choice
+
+4. PATCH /api/v1/characters/123
+   { "name": "Elara Moonwhisper", "alignment": "Neutral Good" }
+
+5. GET /api/v1/characters/123
+   → Check: is_complete === true
 ```
 
 ---
@@ -828,12 +910,17 @@ GET /api/v1/characters/{id}
 
 ### What's Missing?
 
-Check validation endpoint:
+Check the character resource's `validation_status.missing` array:
 ```
-GET /api/v1/characters/{id}/validate
+GET /api/v1/characters/{id}
 ```
 
-Returns specific errors about what's incomplete.
+Or use the summary endpoint's `missing_required` array:
+```
+GET /api/v1/characters/{id}/summary
+```
+
+These return specific fields that are incomplete (e.g., `["race", "class", "background"]`).
 
 ### Choice Details
 
