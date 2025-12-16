@@ -1,6 +1,6 @@
 # Multiclass Test Character Command Design
 
-**Issue:** #714
+**Issue:** [#714](https://github.com/dfox288/ledger-of-heroes/issues/714)
 **Created:** 2025-12-16
 **Status:** Planning
 
@@ -271,6 +271,6 @@ class TestMulticlassCombinationsCommand extends Command
 
 ## Related
 
-- Issue #714 - This plan
-- Issue #692 - Multiclass spellcasting API (merged)
-- Issue #631 - Frontend multiclass UI (needs test character)
+- [#714](https://github.com/dfox288/ledger-of-heroes/issues/714) - This plan
+- [#692](https://github.com/dfox288/ledger-of-heroes/issues/692) - Multiclass spellcasting API (merged)
+- [#631](https://github.com/dfox288/ledger-of-heroes/issues/631) - Frontend multiclass UI (needs test character)
