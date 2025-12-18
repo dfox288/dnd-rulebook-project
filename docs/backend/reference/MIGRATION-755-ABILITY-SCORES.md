@@ -68,8 +68,6 @@ These use `level` for different purposes and were NOT changed:
 | Resource/Endpoint | `level` Meaning | Action |
 |-------------------|-----------------|--------|
 | `CharacterClassPivotResource` | Class level (1-20 per class) | Keep as is |
-| `CharacterStatsResource` | Already uses `level` (consider aligning later) |
-| `PartyCharacterStatsResource` | Party context, uses `level` | Keep as is |
 | `ExperienceResource` | Character level in XP context | Keep as is |
 | `CharacterConditionResource` | Condition level (e.g., exhaustion 1-6) | Keep as is |
 | `SpellSlotResource` | Spell slot level (1st, 2nd, etc.) | Keep as is |
@@ -81,17 +79,30 @@ These use `level` for different purposes and were NOT changed:
 
 ---
 
-## Future Considerations
+## Issue #807: Additional Alignment (Completed)
 
-### Potential Alignment (Low Priority)
+The following resources were updated to use `total_level` for consistency:
 
-1. **CharacterStatsResource** (line 25) returns `'level' => $this->resource->level`
-   - This is from the DTO, not directly `total_level`
-   - Consider aligning to `total_level` in a future PR for full consistency
+| Resource | Before | After |
+|----------|--------|-------|
+| `CharacterStatsResource` | `'level' => $this->resource->level` | `'total_level' => $this->resource->level` |
+| `PartyCharacterStatsResource` | `'level' => (int) $this->total_level` | `'total_level' => (int) $this->total_level` |
+| `CharacterListResource` | `'level' => (int) $this->total_level` | `'total_level' => (int) $this->total_level` |
+| `PartyCharacterResource` | `'level' => (int) $this->total_level` | `'total_level' => (int) $this->total_level` |
 
-2. **PartyCharacterStatsResource** (line 36) returns `'level' => (int) $this->total_level`
-   - Could be renamed to `total_level` for consistency
-   - Low priority - party stats is a specialized endpoint
+**Note:** `CharacterListResource.classes[].level` remains unchanged as it represents class-specific level (e.g., Fighter 5, Wizard 3), not total character level.
+
+**Files Changed:**
+- `app/Http/Resources/CharacterStatsResource.php` (line 25)
+- `app/Http/Resources/PartyCharacterStatsResource.php` (line 36)
+- `app/Http/Resources/CharacterListResource.php` (line 37)
+- `app/Http/Resources/PartyCharacterResource.php` (line 22)
+
+**Tests Updated:**
+- `tests/Feature/Api/CharacterCreationFlowTest.php`
+- `tests/Feature/Api/PartyApiTest.php`
+- `tests/Feature/Api/CharacterListResourceTest.php`
+- `tests/Feature/Api/CharacterControllerTest.php`
 
 ### No Action Needed
 
@@ -104,14 +115,17 @@ These use `level` for different purposes and were NOT changed:
 
 After this migration, verify:
 
-- [ ] `GET /api/v1/characters/{id}` returns nested ability scores
-- [ ] `GET /api/v1/characters/{id}` does NOT have `level` field
-- [ ] `GET /api/v1/characters/{id}` does NOT have `modifiers` field
-- [ ] `GET /api/v1/characters/{id}/stats` still works (different resource)
-- [ ] Character creation flow works
-- [ ] Character update (ability scores) works
-- [ ] All 690 feature tests pass
-- [ ] All 1390 unit tests pass
+- [x] `GET /api/v1/characters/{id}` returns nested ability scores
+- [x] `GET /api/v1/characters/{id}` does NOT have `level` field
+- [x] `GET /api/v1/characters/{id}` does NOT have `modifiers` field
+- [x] `GET /api/v1/characters/{id}/stats` uses `total_level` (Issue #807)
+- [x] `GET /api/v1/parties/{id}/stats` uses `total_level` (Issue #807)
+- [x] `GET /api/v1/characters` (list) uses `total_level` (Issue #807)
+- [x] `GET /api/v1/parties/{id}` (characters) uses `total_level` (Issue #807)
+- [x] Character creation flow works
+- [x] Character update (ability scores) works
+- [x] All 690 feature tests pass
+- [x] All 1390 unit tests pass
 
 ---
 
@@ -132,3 +146,4 @@ Then re-add the old format while investigating.
 - Frontend migration issue: #806
 - Backend PR: dfox288/ledger-of-heroes-backend#224
 - Original issue: #755
+- Additional alignment issue: #807
