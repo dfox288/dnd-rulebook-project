@@ -15,6 +15,7 @@ LOCATION: wrapper/.claude/handoffs.md
 
 <!-- Agents: Add new handoffs below this line. Delete handoffs after processing. -->
 
+
 <!-- HANDOFF TEMPLATE (copy this when creating a new handoff):
 
 ## For: frontend|backend
